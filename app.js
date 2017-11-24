@@ -29,7 +29,21 @@ server.post('/api/messages', connector.listen());
 * ---------------------------------------------------------------------------------------- */
 
 // Create your bot with a function to receive messages from the user
-var bot = new builder.UniversalBot(connector, function (session) {
+var bot = new builder.UniversalBot (connector, function (session) {
+    var message = session.message;
     // session.send("You said: %s", session.message.text);
-    session.send("This is a test");
+    // console.log('session.userData: ', session.userData); // No userData
+    // console.log(session.message);
+    console.log('--- Version: 0.3 ---');
+    //console.log(JSON.stringify(session));
+    //console.log(JSON.stringify(message));
+    //console.log(message.entities);   
+    for (var i = 0; i < message.entities.length; i++) {
+        var entity = message.entities[i];
+        if ('email' in entity) {
+            console.log(entity.email);
+            console.log(entity.name.GivenName + ' ' + entity.name.FamilyName); 
+        }
+    }
+    session.send("Recent Notification: " +  message.text);
 });
