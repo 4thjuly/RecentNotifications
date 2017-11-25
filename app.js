@@ -4,7 +4,7 @@ A simple echo bot for the Microsoft Bot Framework.
 
 var restify = require('restify');
 var builder = require('botbuilder');
-var azure = require('botbuilder-azure');
+//var azure = require('botbuilder-azure');
 
 // Setup Restify Server
 var server = restify.createServer();
@@ -28,16 +28,14 @@ server.post('/api/messages', connector.listen());
 * We provide adapters for Azure Table, CosmosDb, SQL Azure, or you can implement your own!
 * For samples and documentation, see: https://github.com/Microsoft/BotBuilder-Azure
 * ---------------------------------------------------------------------------------------- */
-var tableClient = new azure.AzureTableClient('RecentNotifications', 'recentnotifications', 'gYlzP+BVBQZgUIliiZHq+fSmZT42FLlUDl4S1g/HzE4ImrMhT5y6DhlGPBJfxCmetiUqw5SSEdk3Mcoh435Nxg==');
-var tableStorage = new azure.AzureBotStorage({ gzipData: false }, tableClient);
-
-var tableStorage = null;
+// var tableClient = new azure.AzureTableClient('RecentNotifications', 'recentnotifications', 'gYlzP+BVBQZgUIliiZHq+fSmZT42FLlUDl4S1g/HzE4ImrMhT5y6DhlGPBJfxCmetiUqw5SSEdk3Mcoh435Nxg==');
+// var tableStorage = new azure.AzureBotStorage({ gzipData: false }, tableClient);
 
 // Create your bot with a function to receive messages from the user
 var bot = new builder.UniversalBot (connector, function (session) {
     var message = session.message;
     console.log('--- Version: 0.3 ---');
-    //  console.log(JSON.stringify(message, null, 4));
+    console.log(JSON.stringify(message, null, 4));
     for (var i = 0; i < message.entities.length; i++) {
         var entity = message.entities[i];
         if ('email' in entity) {
@@ -45,7 +43,9 @@ var bot = new builder.UniversalBot (connector, function (session) {
             console.log(entity.name.GivenName + ' ' + entity.name.FamilyName); 
         }
     }
-    var msg = "Recent Notification: " +  message.text;
+    var msg = 'Notification: ' + session.userData.lastMsg + ' => ' + message.text;
     console.log(msg);
+    session.userData.lastMsg = message.text;
     session.send(msg);
-}).set('storage', tableStorage);
+});
+//}).set('storage', tableStorage);
