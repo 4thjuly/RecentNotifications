@@ -34,18 +34,21 @@ server.post('/api/messages', connector.listen());
 // Create your bot with a function to receive messages from the user
 var bot = new builder.UniversalBot (connector, function (session) {
     var message = session.message;
-    console.log('--- Version: 0.3 ---');
-    console.log(JSON.stringify(message, null, 4));
+    console.log('--- Version: 0.4   ---');
+    //console.log(JSON.stringify(message, null, 4));
+    console.log('Id: ' + message.address.user.id);
+    console.log('Source: ' + message.source);
     for (var i = 0; i < message.entities.length; i++) {
         var entity = message.entities[i];
         if ('email' in entity) {
-            console.log(entity.email);
-            console.log(entity.name.GivenName + ' ' + entity.name.FamilyName); 
+            console.log('Email: ' + entity.email);
+            console.log('Name: ' + entity.name.GivenName + ' ' + entity.name.FamilyName); 
         }
     }
     var msg = 'Notification: ' + session.userData.lastMsg + ' => ' + message.text;
     console.log(msg);
-    session.userData.lastMsg = message.text;
-    session.send(msg);
+    session.userData.lastMsg = message.text; // TODO - replace in production
+    //session.send(msg);
+    session.say(msg, "You're last message was, " + message.text);  
 });
 //}).set('storage', tableStorage);
