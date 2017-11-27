@@ -8,6 +8,8 @@ var builder = require('botbuilder');
 
 // Setup Restify Server
 var server = restify.createServer();
+// server.use(restify.queryParser());  
+
 server.listen(process.env.port || process.env.PORT || 3978, function () {
    console.log('%s listening to %s', server.name, server.url); 
 });
@@ -35,7 +37,7 @@ server.post('/api/messages', connector.listen());
 var bot = new builder.UniversalBot (connector, function (session) {
     var message = session.message;
     console.log('--- Version: 0.4   ---');
-    //console.log(JSON.stringify(message, null, 4));
+    console.log(JSON.stringify(message, null, 4));
     console.log('Id: ' + message.address.user.id);
     console.log('Source: ' + message.source);
     for (var i = 0; i < message.entities.length; i++) {
@@ -52,3 +54,17 @@ var bot = new builder.UniversalBot (connector, function (session) {
     session.say(msg, "You're last message was, " + message.text);  
 });
 //}).set('storage', tableStorage);
+
+// server.get("/api/oauthcallback", function (req, res, next) {  
+//     console.log("OAUTH CALLBACK");  
+//     var authCode = req.query.code,  
+//     address = JSON.parse(req.query.state),  
+//     oauth = getOAuthClient();  
+    
+//     oauth.getToken(authCode, function (err, tokens) {  
+//         if (!err) {  
+//             bot.beginDialog(address, "/oauth-success", tokens);  
+//         }  
+//         res.send(200, {});  
+//     });  
+// });  
