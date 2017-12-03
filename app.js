@@ -36,23 +36,45 @@ server.post('/api/messages', connector.listen());
 // Create your bot with a function to receive messages from the user
 var bot = new builder.UniversalBot (connector, function (session) {
     var message = session.message;
-    console.log('--- Version: 0.4   ---');
+    var source = message.source;
+    var userId;
+        
+    console.log('--- Version: 0.6 ---');
     console.log(JSON.stringify(message, null, 4));
-    console.log('Id: ' + message.address.user.id);
-    console.log('Source: ' + message.source);
-    for (var i = 0; i < message.entities.length; i++) {
-        var entity = message.entities[i];
-        if ('email' in entity) {
-            console.log('Email: ' + entity.email);
-            console.log('Name: ' + entity.name.GivenName + ' ' + entity.name.FamilyName); 
+    console.log('Source: ' + source);
+    console.log('Text: ' + message.text);
+    
+    if (message.source == 'directline') {
+        // Store notification msg from Android app
+        userId = message.address.user.id;
+        console.log('Id: [' + userId + ']');
+        session.userData.lastMsg = message.text;
+        // session.userData.notifications = {};
+        // session.userData.notifications[userId] = message.text; // TODO - Replace in production
+        // console.log('userData: ' +  Object.keys(session.userData.notifications).length);
+    } else {
+        for (var i = 0; i < message.entities.length; i++) {
+            var entity = message.entities[i];
+            if ('email' in entity) {
+                userId = entity.email; // email as identity
+                console.log('Email: ' + entity.email);
+                console.log('Name: ' + entity.name.GivenName + ' ' + entity.name.FamilyName); 
+                break;
+            }
         }
+        console.log('Id: [' + userId + ']');
+        // console.log('userData: ' +  Object.keys(session.userData.notifications).length);
+        // var lastNotification = session.userData.notifications ? session.userData.notifications[userId] : null;
+        var lastNotification = session.userData.lastMsg;
+        var msg = 'No recent notifications';
+        if (lastNotification && lastNotification.length > 0) { 
+            msg = "Your last notification was, " + lastNotification;
+        } 
+        console.log('Msg: ' + msg);  
+        session.say(msg, msg);  
     }
-    var msg = 'Notification: ' + session.userData.lastMsg + ' => ' + message.text;
-    console.log(msg);
-    session.userData.lastMsg = message.text; // TODO - replace in production
-    //session.send(msg);
-    session.say(msg, "You're last message was, " + message.text);  
 });
+
 //}).set('storage', tableStorage);
 
 // server.get("/api/oauthcallback", function (req, res, next) {  
