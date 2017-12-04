@@ -1,7 +1,3 @@
-/*-----------------------------------------------------------------------------
-A simple echo bot for the Microsoft Bot Framework. 
------------------------------------------------------------------------------*/
-
 var restify = require('restify');
 var builder = require('botbuilder');
 var azureStorage = require('azure-storage');
@@ -23,10 +19,7 @@ tableSvc.createTableIfNotExists(tableName, function(error, result, response){
 var botTableClient = new azureBotBuilder.AzureTableClient(tableName, storageName, storageKey);
 var botStorage = new azureBotBuilder.AzureBotStorage({gzipData: false}, botTableClient);
 
-// var azure = require('botbuilder-azure');
-// var azureTableClient = new azure.AzureTableClient(tableName, storageName, storageKey);
-// var tableStorage = new azure.AzureBotStorage({gzipData: false}, azureTableClient);
-
+/* global process */
 server.listen(process.env.port || process.env.PORT || 3978, function () {
    console.log('%s listening to %s', server.name, server.url); 
 });
@@ -41,14 +34,6 @@ var connector = new builder.ChatConnector({
 
 // Listen for messages from users 
 server.post('/api/messages', connector.listen());
-
-/*----------------------------------------------------------------------------------------
-* Bot Storage: This is a great spot to register the private state storage for your bot. 
-* We provide adapters for Azure Table, CosmosDb, SQL Azure, or you can implement your own!
-* For samples and documentation, see: https://github.com/Microsoft/BotBuilder-Azure
-* ---------------------------------------------------------------------------------------- */
-// var tableClient = new azure.AzureTableClient('RecentNotifications', 'recentnotifications', 'gYlzP+BVBQZgUIliiZHq+fSmZT42FLlUDl4S1g/HzE4ImrMhT5y6DhlGPBJfxCmetiUqw5SSEdk3Mcoh435Nxg==');
-// var tableStorage = new azure.AzureBotStorage({ gzipData: false }, tableClient);
 
 // Create your bot with a function to receive messages from the user
 var bot = new builder.UniversalBot (connector, function (session) {
@@ -66,7 +51,7 @@ var bot = new builder.UniversalBot (connector, function (session) {
         userId = message.address.user.id;
         console.log('Id: [' + userId + ']');
         
-        var entGen = azure.TableUtilities.entityGenerator;
+        var entGen = azureStorage.TableUtilities.entityGenerator;
         var notificationEntity = {
             PartitionKey: entGen.String(userId),
             RowKey: entGen.String('1'),
@@ -77,12 +62,6 @@ var bot = new builder.UniversalBot (connector, function (session) {
                 console.log('insertEntity: stored');
             } else { console.log('ERROR: failed to insert entity: ', error); }
         });
-        
-        // session.userData.lastMsg = message.text;
-        // session.userData.notifications = {};
-        // session.userData.notifications[userId] = message.text; // TODO - Replace in production
-        // console.log('userData: ' +  Object.keys(session.userData.notifications).length);
-        
     } else {
         for (var i = 0; i < message.entities.length; i++) {
             var entity = message.entities[i];
@@ -106,17 +85,6 @@ var bot = new builder.UniversalBot (connector, function (session) {
                 session.say(msg, msg); 
             }
             else { console.log('retrieveEntity: No previous notification'); }
-        });
-        
-        
-        // console.log('userData: ' +  Object.keys(session.userData.notifications).length);
-        // var lastNotification = session.userData.notifications ? session.userData.notifications[userId] : null;
-        // var lastNotification = session.userData.lastMsg;
-        // var msg = 'No recent notifications';
-        // if (lastNotification && lastNotification.length > 0) { 
-        //     msg = "Your last notification was, " + lastNotification;
-        // } 
-        // console.log('Msg: ' + msg);  
-        // session.say(msg, msg);  
+        });  
     }
 }).set('storage', botStorage);
