@@ -7,16 +7,19 @@ var azureBotBuilder = require('botbuilder-azure');
 var server = restify.createServer();
 
 // Storage
-var tableName = "recentnotifications1"; 
-var storageName = "recentnotifications"; // Obtain from Azure Portal
+var tableName = "RecentNotifications1"; 
+var storageName = "recentnotifications"; 
 var storageKey = "gYlzP+BVBQZgUIliiZHq+fSmZT42FLlUDl4S1g/HzE4ImrMhT5y6DhlGPBJfxCmetiUqw5SSEdk3Mcoh435Nxg=="; // Obtain from Azure Portal
 var tableSvc = azureStorage.createTableService(storageName, storageKey);
-
 tableSvc.createTableIfNotExists(tableName, function(error, result, response){
   if (error) { console.log('ERROR: failed to create table'); }
+  else {
+      console.log('createTableIfNotExists: created'); 
+  }
 });
 
-var botTableClient = new azureBotBuilder.AzureTableClient(tableName, storageName, storageKey);
+// State
+var botTableClient = new azureBotBuilder.AzureTableClient('BotState', storageName, storageKey);
 var botStorage = new azureBotBuilder.AzureBotStorage({gzipData: false}, botTableClient);
 
 /* global process */
