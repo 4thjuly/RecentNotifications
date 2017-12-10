@@ -1,34 +1,36 @@
+
+const MAX_INDEX = 10;
+const TABLE_NAME = "RecentNotifications1"; 
+const STORAGE_NAME = "recentnotifications"; 
+const STORAGE_KEY = "gYlzP+BVBQZgUIliiZHq+fSmZT42FLlUDl4S1g/HzE4ImrMhT5y6DhlGPBJfxCmetiUqw5SSEdk3Mcoh435Nxg==";
+
 var restify = require('restify');
 var builder = require('botbuilder');
 var azureStorage = require('azure-storage');
 var azureBotBuilder = require('botbuilder-azure'); 
 
 // Setup Restify Server
-var server = restify.createServer();
+var _server = restify.createServer();
 
 // Storage
-var tableName = "RecentNotifications1"; 
-var storageName = "recentnotifications"; 
-var storageKey = "gYlzP+BVBQZgUIliiZHq+fSmZT42FLlUDl4S1g/HzE4ImrMhT5y6DhlGPBJfxCmetiUqw5SSEdk3Mcoh435Nxg=="; // Obtain from Azure Portal
-var tableSvc = azureStorage.createTableService(storageName, storageKey);
-tableSvc.createTableIfNotExists(tableName, function(error, result, response){
-  if (error) { console.log('ERROR: failed to create table'); }
-  else {
-      console.log('createTableIfNotExists: created'); 
-  }
+var _entGen = azureStorage.TableUtilities.entityGenerator;
+var _tableSvc = azureStorage.createTableService(STORAGE_NAME, STORAGE_KEY);
+_tableSvc.createTableIfNotExists(TABLE_NAME, function(error, result, response) {
+    if (error) { console.log('ERROR: failed to create table'); }
+    else { console.log('createTableIfNotExists: created'); }
 });
 
 // State
-var botTableClient = new azureBotBuilder.AzureTableClient('BotState', storageName, storageKey);
-var botStorage = new azureBotBuilder.AzureBotStorage({gzipData: false}, botTableClient);
+var _botTableClient = new azureBotBuilder.AzureTableClient('BotState', STORAGE_NAME, STORAGE_KEY);
+var _botStorage = new azureBotBuilder.AzureBotStorage({gzipData: false}, _botTableClient);
 
 /* global process */
-server.listen(process.env.port || process.env.PORT || 3978, function () {
-   console.log('%s listening to %s', server.name, server.url); 
+_server.listen(process.env.port || process.env.PORT || 3978, function () {
+    console.log('%s listening to %s', _server.name, _server.url); 
 });
   
 // Create chat connector for communicating with the Bot Framework Service
-var connector = new builder.ChatConnector({
+var _connector = new builder.ChatConnector({
     appId: process.env.MicrosoftAppId,
     appPassword: process.env.MicrosoftAppPassword,
     stateEndpoint: process.env.BotStateEndpoint,
@@ -36,10 +38,10 @@ var connector = new builder.ChatConnector({
 });
 
 // Listen for messages from users 
-server.post('/api/messages', connector.listen());
+_server.post('/api/messages', _connector.listen());
 
 // Create your bot with a function to receive messages from the user
-var bot = new builder.UniversalBot (connector, function (session) {
+var _bot = new builder.UniversalBot (_connector, function (session) {
     var message = session.message;
     var source = message.source;
     var userId;
@@ -50,44 +52,88 @@ var bot = new builder.UniversalBot (connector, function (session) {
     console.log('Text: ' + message.text);
     
     if (message.source == 'directline') {
-        // Store notification msg from Android app
-        userId = message.address.user.id;
-        console.log('Id: [' + userId + ']');
-        
-        var entGen = azureStorage.TableUtilities.entityGenerator;
-        var notificationEntity = {
-            PartitionKey: entGen.String(userId),
-            RowKey: entGen.String('1'),
-            notification: entGen.String(message.text),
-        };
-        tableSvc.insertOrReplaceEntity(tableName, notificationEntity, function (error, result, response) {
-            if (!error) {
-                console.log('insertEntity: stored');
-            } else { console.log('ERROR: failed to insert entity: ', error); }
-        });
+        addNotificationAsync(message.address.user.id, message.text);
     } else {
-        for (var i = 0; i < message.entities.length; i++) {
-            var entity = message.entities[i];
-            if ('email' in entity) {
-                userId = entity.email; // email as identity
-                console.log('Email: ' + entity.email);
-                console.log('Name: ' + entity.name.GivenName + ' ' + entity.name.FamilyName); 
-                break;
+        var msg = 'No recent notifications';
+        var userId = userIdFromMessage(message);
+        getLastNotificationAsync(userId, function(notification) { 
+            if (notification) {
+                msg = "Your last notification was, " + notification;
             }
-        }
-        console.log('Id: [' + userId + ']');
-        tableSvc.retrieveEntity(tableName, userId, '1', function(error, result, response) {
-            if (!error) { 
-                //console.log('Result: ' + JSON.stringify(result, null, 4));  
-                var lastNotification = result.notification._; 
-                var msg = 'No recent notifications';
-                if (lastNotification && lastNotification.length > 0) { 
-                    msg = "Your last notification was, " + lastNotification;
-                } 
-                console.log('Msg: ' + msg);  
-                session.say(msg, msg); 
-            }
-            else { console.log('retrieveEntity: No previous notification'); }
-        });  
+            console.log('Msg: ' + msg);  
+            session.say(msg, msg);
+        });             
     }
-}).set('storage', botStorage);
+}).set('storage', _botStorage);
+
+function userIdFromMessage(message) { 
+    var userId = null;
+    for (var i = 0; i < message.entities.length; i++) {
+        var entity = message.entities[i];
+        if ('email' in entity) {
+            userId = entity.email; // email as identity
+            console.log('Email: ' + entity.email);
+            console.log('Name: ' + entity.name.GivenName + ' ' + entity.name.FamilyName); 
+            break;
+        }
+    }
+    return userId;
+}
+
+function addNotificationAsync(userId, notification) {
+    
+    if (!userId) {
+        console.log('ERROR: No user id');
+        return;
+    }
+    
+    // console.log('Id: [' + userId + ']');
+        
+    _tableSvc.retrieveEntity(TABLE_NAME, userId, 'currentIndex', function(error, result, response) {
+        var currentIndex = 0;
+        if (!error) {
+            currentIndex = result.currentIndex._;
+            if (++currentIndex > MAX_INDEX) currentIndex = 0;      
+            console.log('NewIndex: ', currentIndex);
+            // Write item then update index. 
+            var notificationEntity = { PartitionKey: _entGen.String(userId), RowKey: _entGen.String(currentIndex), notification: _entGen.String(notification), index: _emtGen.String(currentIndex)};
+            _tableSvc.insertOrReplaceEntity(TABLE_NAME, notificationEntity, function (error, result, response) {
+                if (!error) {
+                    console.log('insertOrReplaceEntity: updated entity');
+                    var indexEntity = { PartitionKey: _entGen.String(userId), RowKey: _entGen.String('currentIndex'), notification: _entGen.String(currentIndex), };
+                    _tableSvc.insertOrReplaceEntity(TABLE_NAME, notificationEntity, function (error, result, response) {
+                        if (!error) { console.log('insertOrReplaceEntity: updated index'); }
+                        else { console.log('ERROR: failed to update index'); }
+                    });
+                } else { console.log('ERROR: failed to insert entity: ', error); }
+            });                         
+        } else {
+            console.log('INFO: No current index'); 
+        } 
+    });   
+}
+
+function getLastNotificationAsync(userId, successCallback) {
+    if (!userId) {
+        console.log('ERROR: No user id');
+        return;
+    }
+    
+    //console.log('Id: [' + userId + ']');
+     
+    _tableSvc.retrieveEntity(TABLE_NAME, userId, 'currentIndex', function(error, result, response) {
+        if (!error) {  
+            var currentIndex = result.currentIndex._;
+            _tableSvc.retrieveEntity(TABLE_NAME, userId, currentIndex, function(error, result, response) {
+                if (!error) { 
+                    //console.log('Result: ' + JSON.stringify(result, null, 4));  
+                    successCallback(result.notification._); 
+                }
+                else { console.log('retrieveEntity: No previous notification'); }
+            });     
+        } else {
+            console.log('INFO: No current index, no notifications yet'); 
+        }      
+    });  
+
+}
