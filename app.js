@@ -1,4 +1,4 @@
-
+// Globals
 const MAX_INDEX = 10;
 const TABLE_NAME = "RecentNotifications1"; 
 const STORAGE_NAME = "recentnotifications"; 
