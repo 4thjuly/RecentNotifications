@@ -16,8 +16,8 @@ var _server = restify.createServer();
 var _entGen = azureStorage.TableUtilities.entityGenerator;
 var _tableSvc = azureStorage.createTableService(STORAGE_NAME, STORAGE_KEY);
 _tableSvc.createTableIfNotExists(TABLE_NAME, function(error, result, response) {
-    if (error) { console.log('ERROR: failed to create table'); }
-    else { console.log('createTableIfNotExists: created'); }
+    if (error) { console.error('ERROR: failed to create table'); }
+    else { console.info('createTableIfNotExists: created'); }
 });
 
 // State
@@ -26,7 +26,7 @@ var _botStorage = new azureBotBuilder.AzureBotStorage({gzipData: false}, _botTab
 
 /* global process */
 _server.listen(process.env.port || process.env.PORT || 3978, function () {
-    console.log('%s listening to %s', _server.name, _server.url); 
+    console.info('%s listening to %s', _server.name, _server.url); 
 });
   
 // Create chat connector for communicating with the Bot Framework Service
@@ -46,10 +46,10 @@ var _bot = new builder.UniversalBot (_connector, function (session) {
     var source = message.source;
     var userId;
         
-    console.log('--- Version: 0.6 ---');
+    console.warn('--- Version: 0.6 ---');
     //console.log(JSON.stringify(message, null, 4));
-    console.log('Source: ' + source);
-    console.log('Text: ' + message.text);
+    console.warn('Source: ' + source);
+    console.warn('Text: ' + message.text);
     
     if (message.source == 'directline') {
         addNotificationAsync(message.address.user.id, message.text);
