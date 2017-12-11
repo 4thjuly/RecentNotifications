@@ -46,7 +46,7 @@ var _bot = new builder.UniversalBot (_connector, function (session) {
     var source = message.source;
     var userId;
         
-    console.warn('\r--- Version: 0.6 ---');
+    console.warn('\r--- Version: 0.01 ---');
     //console.log(JSON.stringify(message, null, 4));
     console.warn('Source: ' + source);
     console.info('Text: ' + message.text);
