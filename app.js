@@ -46,7 +46,7 @@ var _bot = new builder.UniversalBot (_connector, function (session) {
     var source = message.source;
     var userId;
         
-    console.warn('--- Version: 0.6 ---');
+    console.warn('\r--- Version: 0.6 ---');
     //console.log(JSON.stringify(message, null, 4));
     console.warn('Source: ' + source);
     console.warn('Text: ' + message.text);
@@ -80,6 +80,7 @@ function userIdFromMessage(message) {
     return userId;
 }
 
+// NB Reentrancy will mean notification will get overwritten
 function addNotificationAsync(userId, notification) {
     
     if (!userId) {
@@ -88,28 +89,32 @@ function addNotificationAsync(userId, notification) {
     }
     
     // console.log('Id: [' + userId + ']');
+    console.warn('addNotificationAsync: ', notification); 
         
     _tableSvc.retrieveEntity(TABLE_NAME, userId, 'currentIndex', function(error, result, response) {
         var currentIndex = 0;
-        if (!error) {
-            currentIndex = result.currentIndex._;
-            if (++currentIndex > MAX_INDEX) currentIndex = 0;      
-            console.log('NewIndex: ', currentIndex);
-            // Write item then update index. 
-            var notificationEntity = { PartitionKey: _entGen.String(userId), RowKey: _entGen.String(currentIndex), notification: _entGen.String(notification), index: _emtGen.String(currentIndex)};
-            _tableSvc.insertOrReplaceEntity(TABLE_NAME, notificationEntity, function (error, result, response) {
-                if (!error) {
-                    console.log('insertOrReplaceEntity: updated entity');
-                    var indexEntity = { PartitionKey: _entGen.String(userId), RowKey: _entGen.String('currentIndex'), notification: _entGen.String(currentIndex), };
-                    _tableSvc.insertOrReplaceEntity(TABLE_NAME, notificationEntity, function (error, result, response) {
-                        if (!error) { console.log('insertOrReplaceEntity: updated index'); }
-                        else { console.log('ERROR: failed to update index'); }
-                    });
-                } else { console.log('ERROR: failed to insert entity: ', error); }
-            });                         
+        if (error) {
+            console.warn('No current index, assuming 0');           
         } else {
-            console.log('INFO: No current index'); 
-        } 
+            currentIndex = result.index._;
+            if (++currentIndex > MAX_INDEX) currentIndex = 0;     
+            console.log('NewIndex: ', currentIndex);        
+        }
+        
+        // Write item then update index. 
+        var notificationEntity = { PartitionKey: _entGen.String(userId), RowKey: _entGen.String(currentIndex.toString()), notification: _entGen.String(notification)};
+        _tableSvc.insertOrReplaceEntity(TABLE_NAME, notificationEntity, function (error, result, response) {
+            if (!error) {
+                console.log('insertOrReplaceEntity: updated entity');
+                var indexEntity = { PartitionKey: _entGen.String(userId), RowKey: _entGen.String('currentIndex'), index: _entGen.String(currentIndex.toString()), };
+                _tableSvc.insertOrReplaceEntity(TABLE_NAME, indexEntity, function (error, result, response) {
+                    if (!error) { console.log('insertOrReplaceEntity: updated index'); }
+                    else { console.log('ERROR: failed to update index'); }
+                });
+            } else { 
+                console.log('ERROR: failed to insert entity: ', error);
+            }
+        });                         
     });   
 }
 
@@ -120,10 +125,11 @@ function getLastNotificationAsync(userId, successCallback) {
     }
     
     //console.log('Id: [' + userId + ']');
-     
+    console.warn('getLastNotificationAsync: ', userId);  
+        
     _tableSvc.retrieveEntity(TABLE_NAME, userId, 'currentIndex', function(error, result, response) {
         if (!error) {  
-            var currentIndex = result.currentIndex._;
+            var currentIndex = result.index._;
             _tableSvc.retrieveEntity(TABLE_NAME, userId, currentIndex, function(error, result, response) {
                 if (!error) { 
                     //console.log('Result: ' + JSON.stringify(result, null, 4));  
@@ -132,7 +138,7 @@ function getLastNotificationAsync(userId, successCallback) {
                 else { console.log('retrieveEntity: No previous notification'); }
             });     
         } else {
-            console.log('INFO: No current index, no notifications yet'); 
+            console.log('INFO: No current index, no notifications yet \r', error); 
         }      
     });  
 
