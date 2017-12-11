@@ -30,7 +30,9 @@ var _botStorage = new azureBotBuilder.AzureBotStorage({gzipData: false}, _botTab
 
 /* global process */
 _server.listen(process.env.port || process.env.PORT || 3978, function () {
-    log.info('%s listening to %s', _server.name, _server.url); 
+    // log.info('%s listening to %s', _server.name, _server.url); 
+    log.info("Server listening: " + _server.name);
+    log.debug("Server: \r" + _server.toString());
 });
   
 // Create chat connector for communicating with the Bot Framework Service
