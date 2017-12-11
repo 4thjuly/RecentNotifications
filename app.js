@@ -9,6 +9,10 @@ var builder = require('botbuilder');
 var azureStorage = require('azure-storage');
 var azureBotBuilder = require('botbuilder-azure'); 
 
+// Logging
+var log = require('loglevel'); 
+log.setLevel("info");
+
 // Setup Restify Server
 var _server = restify.createServer();
 
@@ -16,8 +20,8 @@ var _server = restify.createServer();
 var _entGen = azureStorage.TableUtilities.entityGenerator;
 var _tableSvc = azureStorage.createTableService(STORAGE_NAME, STORAGE_KEY);
 _tableSvc.createTableIfNotExists(TABLE_NAME, function(error, result, response) {
-    if (error) { console.error('ERROR: failed to create table'); }
-    else { console.info('createTableIfNotExists: created'); }
+    if (error) { log.error('ERROR: failed to create table'); }
+    else { log.debug('createTableIfNotExists: created'); }
 });
 
 // State
@@ -26,7 +30,7 @@ var _botStorage = new azureBotBuilder.AzureBotStorage({gzipData: false}, _botTab
 
 /* global process */
 _server.listen(process.env.port || process.env.PORT || 3978, function () {
-    console.info('%s listening to %s', _server.name, _server.url); 
+    log.info('%s listening to %s', _server.name, _server.url); 
 });
   
 // Create chat connector for communicating with the Bot Framework Service
@@ -46,10 +50,10 @@ var _bot = new builder.UniversalBot (_connector, function (session) {
     var source = message.source;
     var userId;
         
-    console.warn('\r--- Version: 0.01 ---');
+    log.info('\r--- Version: 0.01 ---');
     //console.log(JSON.stringify(message, null, 4));
-    console.warn('Source: ' + source);
-    console.info('Text: ' + message.text);
+    log.info('Source: ' + source);
+    log.info('Text: ' + message.text);
     
     if (message.source == 'directline') {
         addNotificationAsync(message.address.user.id, message.text);
@@ -60,7 +64,7 @@ var _bot = new builder.UniversalBot (_connector, function (session) {
             if (notification) {
                 msg = "Your last notification was, " + notification;
             }
-            console.log('Msg: ' + msg);  
+            log.debug('Msg: ' + msg);  
             session.say(msg, msg);
         });             
     }
@@ -72,8 +76,8 @@ function userIdFromMessage(message) {
         var entity = message.entities[i];
         if ('email' in entity) {
             userId = entity.email; // email as identity
-            console.log('Email: ' + entity.email);
-            console.log('Name: ' + entity.name.GivenName + ' ' + entity.name.FamilyName); 
+            log.debug('Email: ' + entity.email);
+            log.debug('Name: ' + entity.name.GivenName + ' ' + entity.name.FamilyName); 
             break;
         }
     }
@@ -84,35 +88,35 @@ function userIdFromMessage(message) {
 function addNotificationAsync(userId, notification) {
     
     if (!userId) {
-        console.log('ERROR: No user id');
+        log.error('ERROR: No user id');
         return;
     }
     
     // console.log('Id: [' + userId + ']');
-    console.warn('addNotificationAsync: ', notification); 
+    log.debug('addNotificationAsync: ', notification); 
         
     _tableSvc.retrieveEntity(TABLE_NAME, userId, 'currentIndex', function(error, result, response) {
         var currentIndex = 0;
         if (error) {
-            console.warn('No current index, assuming 0');           
+            log.warn('No current index, assuming 0');           
         } else {
             currentIndex = result.index._;
             if (++currentIndex > MAX_INDEX) currentIndex = 0;     
-            console.info('NewIndex: ', currentIndex);        
+            log.debug('NewIndex: ', currentIndex);        
         }
         
         // Write item then update index. 
         var notificationEntity = { PartitionKey: _entGen.String(userId), RowKey: _entGen.String(currentIndex.toString()), notification: _entGen.String(notification)};
         _tableSvc.insertOrReplaceEntity(TABLE_NAME, notificationEntity, function (error, result, response) {
             if (!error) {
-                console.info('insertOrReplaceEntity: updated entity');
+                log.debug('insertOrReplaceEntity: updated entity');
                 var indexEntity = { PartitionKey: _entGen.String(userId), RowKey: _entGen.String('currentIndex'), index: _entGen.String(currentIndex.toString()), };
                 _tableSvc.insertOrReplaceEntity(TABLE_NAME, indexEntity, function (error, result, response) {
-                    if (!error) { console.info('insertOrReplaceEntity: updated index'); }
-                    else { console.error('ERROR: failed to update index'); }
+                    if (!error) { log.debug('insertOrReplaceEntity: updated index'); }
+                    else { log.error('ERROR: failed to update index'); }
                 });
             } else { 
-                console.error('ERROR: failed to insert entity: ', error);
+                log.error('ERROR: failed to insert entity: ', error);
             }
         });                         
     });   
@@ -120,12 +124,12 @@ function addNotificationAsync(userId, notification) {
 
 function getLastNotificationAsync(userId, successCallback) {
     if (!userId) {
-        console.error('ERROR: No user id');
+        log.error('ERROR: No user id');
         return;
     }
     
     //console.log('Id: [' + userId + ']');
-    console.warn('getLastNotificationAsync: ', userId);  
+    log.debug('getLastNotificationAsync: ', userId);  
         
     _tableSvc.retrieveEntity(TABLE_NAME, userId, 'currentIndex', function(error, result, response) {
         if (!error) {  
@@ -136,11 +140,11 @@ function getLastNotificationAsync(userId, successCallback) {
                     successCallback(result.notification._); 
                 }
                 else { 
-                    console.warn('No previous notification'); 
+                    log.debug('No previous notification'); 
                 }
             });     
         } else {
-            console.warn('No current index, no notifications yet \r', error); 
+            log.debug('No current index, no notifications yet \r', error); 
         }      
     });  
 
