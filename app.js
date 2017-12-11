@@ -49,7 +49,7 @@ var _bot = new builder.UniversalBot (_connector, function (session) {
     console.warn('\r--- Version: 0.6 ---');
     //console.log(JSON.stringify(message, null, 4));
     console.warn('Source: ' + source);
-    console.warn('Text: ' + message.text);
+    console.info('Text: ' + message.text);
     
     if (message.source == 'directline') {
         addNotificationAsync(message.address.user.id, message.text);
@@ -98,21 +98,21 @@ function addNotificationAsync(userId, notification) {
         } else {
             currentIndex = result.index._;
             if (++currentIndex > MAX_INDEX) currentIndex = 0;     
-            console.log('NewIndex: ', currentIndex);        
+            console.info('NewIndex: ', currentIndex);        
         }
         
         // Write item then update index. 
         var notificationEntity = { PartitionKey: _entGen.String(userId), RowKey: _entGen.String(currentIndex.toString()), notification: _entGen.String(notification)};
         _tableSvc.insertOrReplaceEntity(TABLE_NAME, notificationEntity, function (error, result, response) {
             if (!error) {
-                console.log('insertOrReplaceEntity: updated entity');
+                console.info('insertOrReplaceEntity: updated entity');
                 var indexEntity = { PartitionKey: _entGen.String(userId), RowKey: _entGen.String('currentIndex'), index: _entGen.String(currentIndex.toString()), };
                 _tableSvc.insertOrReplaceEntity(TABLE_NAME, indexEntity, function (error, result, response) {
-                    if (!error) { console.log('insertOrReplaceEntity: updated index'); }
-                    else { console.log('ERROR: failed to update index'); }
+                    if (!error) { console.info('insertOrReplaceEntity: updated index'); }
+                    else { console.error('ERROR: failed to update index'); }
                 });
             } else { 
-                console.log('ERROR: failed to insert entity: ', error);
+                console.error('ERROR: failed to insert entity: ', error);
             }
         });                         
     });   
@@ -120,7 +120,7 @@ function addNotificationAsync(userId, notification) {
 
 function getLastNotificationAsync(userId, successCallback) {
     if (!userId) {
-        console.log('ERROR: No user id');
+        console.error('ERROR: No user id');
         return;
     }
     
@@ -135,10 +135,12 @@ function getLastNotificationAsync(userId, successCallback) {
                     //console.log('Result: ' + JSON.stringify(result, null, 4));  
                     successCallback(result.notification._); 
                 }
-                else { console.log('retrieveEntity: No previous notification'); }
+                else { 
+                    console.warn('No previous notification'); 
+                }
             });     
         } else {
-            console.log('INFO: No current index, no notifications yet \r', error); 
+            console.warn('No current index, no notifications yet \r', error); 
         }      
     });  
 
